@@ -56,10 +56,3 @@ def get_logger(
 #快捷获取日志器
 logger = get_logger()
 
-if __name__ == "__main__":
-    logger.info("[INFO]")
-    logger.debug("[DEBUG]")
-    logger.warning("[WARNING]")
-    logger.error("[ERROR]")
-    logger.fatal("[FATAL]")
-    
