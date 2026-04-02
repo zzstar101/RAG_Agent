@@ -66,7 +66,15 @@ def call_with_retry(action_name: str, operation: Callable[[], T]) -> T:
 
 @tool(description="从向量存储中检索相关文档并生成摘要")
 def rag_summarize(query: str) -> str:
-    return rag.rag_summarize(query)
+    result = rag.rag_summarize(query)
+    metrics = getattr(rag, "last_metrics", {})
+    logger.info(
+        "[检索指标]hits=%s retrieval_ms=%.2f model_ms=%.2f",
+        metrics.get("retrieval_hit_count", 0),
+        float(metrics.get("retrieval_duration_ms", 0.0)),
+        float(metrics.get("model_duration_ms", 0.0)),
+    )
+    return result
 
 @tool(description="获取指定城市的天气信息，以消息字符串形式返回")
 def get_weather(city: str) -> str:
