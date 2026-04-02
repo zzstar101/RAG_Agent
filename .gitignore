@@ -227,5 +227,4 @@ config/*
 chroma/*
 md5.text
 todo.md
-tests/__init__.py
-tests/test_agent_tools.py
+tests/*

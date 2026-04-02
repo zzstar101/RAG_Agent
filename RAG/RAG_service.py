@@ -10,22 +10,38 @@ from model.factory import chat_model
 
 class RAGSummarizeService:
     def __init__(self):
-        self.vector_store = VectorStoreService()  # Initialize your vector store here
-        self.retriever = self.vector_store.get_retriever()  # Initialize your retriever here
-        self.prompt_text = load_rag_prompt()  # Initialize your prompt text here
-        self.prompt_template = PromptTemplate.from_template(self.prompt_text)  # Initialize your prompt template here
-        self.model = chat_model  # Initialize your model here
-        self.chain = self.__init__chain()  # Initialize your chain here
+        self.vector_store = VectorStoreService()
+        self.retriever = self.vector_store.get_retriever()
+        self.prompt_text = load_rag_prompt()
+        self.prompt_template = PromptTemplate.from_template(self.prompt_text)
+        self.model = chat_model
+        self.chain = self.__init__chain()
         
     def __init__chain(self):
         chain = self.prompt_template | self.model | StrOutputParser()
         return chain
     
     def retriever_docs(self, query: str) -> list[Document]:
-        return self.retriever.invoke(query)
+        retrieved_documents = self.vector_store.retrieve_documents(query)
+        return [retrieved_document.document for retrieved_document in retrieved_documents]
+
+    def _format_source_summary(self, retrieved_documents) -> str:
+        if not retrieved_documents:
+            return "\n\n参考来源：未命中知识库中的相关内容。"
+
+        source_lines = ["\n\n参考来源："]
+        for index, retrieved_document in enumerate(retrieved_documents, start=1):
+            source = retrieved_document.document.metadata.get("source", "未知来源")
+            score_text = f"{retrieved_document.score:.2f}" if retrieved_document.score is not None else "未知"
+            source_lines.append(
+                f"- [{index}] 来源：{source} | 置信度：{retrieved_document.confidence} | 相关度：{score_text}"
+            )
+
+        return "\n".join(source_lines)
     
     def rag_summarize(self, query: str) -> str:
-        context_docs = self.retriever_docs(query)
+        retrieved_documents = self.vector_store.retrieve_documents(query)
+        context_docs = [retrieved_document.document for retrieved_document in retrieved_documents]
         context = ""
         counter = 0
         for doc in context_docs:
@@ -37,6 +53,6 @@ class RAGSummarizeService:
                 "input": query,
                 "context": context
             }
-        )
+        ) + self._format_source_summary(retrieved_documents)
             
             
