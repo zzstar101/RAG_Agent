@@ -60,11 +60,11 @@
    ▼              ▼               ▼
 ┌──────────┐ ┌─────────────┐ ┌────────────────┐
 │ RAG 服务 │ │   UAPI       │ │  外部 CSV 数据 │
-│(rag/)    │ │ 天气 / 定位  │ │ data/external/ │
+│(RAG/)    │ │ 天气 / 定位  │ │ data/external/ │
 └────┬─────┘ └─────────────┘ └────────────────┘
      │
 ┌────▼─────────────────────────┐
-│  Chroma 向量数据库 (chroma_db/)│
+│  Chroma 向量数据库 (chroma/)   │
 │  Embedding: text-embedding-v4 │
 │  知识库文档 (data/)           │
 │  ├─ PDF / TXT 文档            │
@@ -77,15 +77,22 @@
 ## 📂 目录结构
 
 ```
-zhisaotong-Agent/
+RAG_Agent/
 ├── app.py                        # Streamlit 前端入口
+├── README.md                     # 项目说明文档
+├── requirements.txt              # 依赖清单
+├── specification.md              # 需求与规格说明
+├── LICENSE
+├── .gitignore
+├── .vscode/
+│   └── settings.json
 ├── agent/
 │   ├── react_agent.py            # ReAct Agent 核心逻辑
 │   └── tools/
 │       ├── agent_tools.py        # 工具函数定义
 │       └── middleware.py         # Agent 中间件
-├── rag/
-│   ├── rag_service.py            # RAG 检索摘要服务
+├── RAG/
+│   ├── RAG_service.py            # RAG 检索摘要服务
 │   └── vector_store.py           # Chroma 向量库管理
 ├── model/
 │   └── factory.py                # 模型工厂（LLM + Embedding）
@@ -102,7 +109,7 @@ zhisaotong-Agent/
 │   └── prompts.yml               # 提示词文件路径
 ├── prompts/
 │   ├── main_prompt.txt           # 主 ReAct 提示词
-│   ├── rag_summarize.txt         # RAG 摘要提示词
+│   ├── rag_summarization_prompt.txt # RAG 摘要提示词
 │   └── report_prompt.txt         # 报告生成提示词
 ├── data/
 │   ├── 扫地机器人100问.pdf
@@ -113,8 +120,13 @@ zhisaotong-Agent/
 │   ├── 选购指南.txt
 │   └── external/
 │       └── records.csv           # 用户使用记录（外部数据）
-├── chroma_db/                    # Chroma 持久化目录（自动生成）
+├── tests/
+│   ├── test_agent_tools.py
+│   ├── test_config_and_paths.py
+│   └── test_p2_improvements.py
+├── chroma/                       # Chroma 持久化目录（自动生成）
 ├── logs/                         # 日志文件目录（自动生成）
+├── __pycache__/
 └── md5.text                      # 文档 MD5 去重记录
 ```
 
@@ -158,7 +170,13 @@ pip install -r requirements.txt
 本项目使用阿里云通义千问大模型和 DashScope Embedding，需要配置系统环境变量：
 
 ```bash
-OPENAI_API_KEY="your_open_api_key"
+export DASHSCOPE_API_KEY="your_dashscope_api_key"
+```
+
+Windows PowerShell:
+
+```powershell
+$env:DASHSCOPE_API_KEY="your_dashscope_api_key"
 ```
 
 > 可在 [阿里云百炼平台](https://bailian.console.aliyun.com/) 获取 API Key。
@@ -182,13 +200,17 @@ embedding_model_name: text-embedding-v4  # 向量化模型
 ```yaml
 # config/chroma.yml
 collection_name: agent
-persist_directory: chroma_db
+persist_dictionary: chroma
 k: 3                    # 检索返回的最相关文档数量
 data_path: data
 md5_hex_store: md5.text
-allow_knowledge_file_type: ["txt", "pdf"]
-chunk_size: 200         # 文本分块大小
-chunk_overlap: 20       # 分块重叠长度
+allow_knowledge_file_types: [".txt", ".md", ".pdf"]
+chunks_size: 200        # 文本分块大小
+chunks_overlap: 20      # 分块重叠长度
+retrieval_mode: rerank
+fetch_k: 6
+lambda_mult: 0.5
+score_threshold: 0.0
 ```
 
 ---
@@ -288,8 +310,8 @@ Agent 的三个中间件负责监控、日志和动态提示词切换：
 ```
 monitor_tool         工具调用监控
   ├─ 记录每次工具调用的名称和参数
-  ├─ 记录工具调用成功/失败状态
-  └─ 检测 fill_context_for_report 调用，将 context["report"] 置为 True
+  ├─ 记录工具调用成功/失败状态与耗时
+  └─ 检测 fill_context_for_report 调用，进入报告状态机
 
 log_before_model     模型调用前日志
   └─ 记录当前消息数量及最新消息内容
@@ -341,7 +363,7 @@ logs/
 
 日志格式：
 ```
-2025-01-01 12:00:00,123 - agent - INFO - middleware.py:19 - [tool monitor]执行工具：get_weather
+2025-01-01 12:00:00,123 - agent - INFO - trace_id=7f4f3c... - middleware.py:19 - [工具调用监控]执行工具：get_weather
 ```
 
 - **控制台**：输出 INFO 及以上级别日志
