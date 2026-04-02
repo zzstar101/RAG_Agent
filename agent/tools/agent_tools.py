@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import time
@@ -170,15 +171,58 @@ def generate_external_data():
         
     
     
-@tool(description="从外部系统中获取用户的使用记录，以纯字符串形式返回，若未检索到返回空字符串")
+def _build_external_data_response(
+    *,
+    status: str,
+    user_id: str,
+    month: str,
+    data: dict[str, str] | None,
+    message: str,
+) -> str:
+    return json.dumps(
+        {
+            "status": status,
+            "user_id": user_id,
+            "month": month,
+            "data": data,
+            "message": message,
+        },
+        ensure_ascii=False,
+    )
+
+
+@tool(description="从外部系统中获取用户的使用记录，返回JSON字符串；status=ok时data为结构化记录，status=no_data时data为null，status=error时message说明错误")
 def fetch_external_data(user_id: str, month: str) -> str:
-    generate_external_data()
-    
     try:
-        return external_data[user_id][month]
-    except KeyError:
-        logger.warning(f"[获取外部数据]未找到用户{user_id}在{month}的使用记录")
-        return ""
+        generate_external_data()
+
+        record = external_data.get(user_id, {}).get(month)
+        if record is None:
+            logger.warning(f"[获取外部数据]未找到用户{user_id}在{month}的使用记录")
+            return _build_external_data_response(
+                status="no_data",
+                user_id=user_id,
+                month=month,
+                data=None,
+                message="未找到指定用户在指定月份的使用记录",
+            )
+
+        return _build_external_data_response(
+            status="ok",
+            user_id=user_id,
+            month=month,
+            data=record,
+            message="获取成功",
+        )
+    except Exception as exc:
+        logger.error(f"[获取外部数据]用户{user_id}在{month}的使用记录获取失败：{type(exc).__name__}: {exc}")
+        return _build_external_data_response(
+            status="error",
+            user_id=user_id,
+            month=month,
+            data=None,
+            message=f"{type(exc).__name__}: {exc}",
+        )
 
 
 @tool(description="无入参，无返回值，调用后触发中间件自动为报告生成场景动态注入上下文信息，为后续提示词切换提供上下文支撑")

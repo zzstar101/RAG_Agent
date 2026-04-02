@@ -272,7 +272,7 @@ Agent 配备了以下 7 个工具：
 | `get_user_location` | 通过 IP 获取用户所在城市 |
 | `get_user_id` | 获取当前用户 ID |
 | `get_current_month` | 获取当前月份 |
-| `fetch_external_data` | 从外部系统获取指定用户指定月份的使用记录 |
+| `fetch_external_data` | 从外部系统获取指定用户指定月份的使用记录，返回 JSON 字符串，区分 `ok` / `no_data` / `error` |
 | `fill_context_for_report` | 触发报告模式，通知中间件切换为报告生成提示词 |
 
 ---
