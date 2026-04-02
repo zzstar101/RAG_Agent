@@ -220,4 +220,9 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,windows
 
-.prompts/
+prompts/*
+!prompts/.gitkeep
+config/*
+!config/.gitkeep
+chroma/*
+md5.text

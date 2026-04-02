@@ -2,9 +2,8 @@ from datetime import datetime
 import logging
 import os
 from logging.handlers import RotatingFileHandler
-from gradio_client import file
 
-from path_tool import get_abs_path
+from utils.path_tool import get_abs_path
 
 LOG_ROOT = get_abs_path("logs")
 
