@@ -3,15 +3,15 @@
 > 基于 LangChain ReAct Agent + RAG + Streamlit 的扫地机器人智能客服系统
 
 ---
-# 使用必看
-请务必安装好相关配置环境，其中config/agent.yml文件中的gaodekey需要改为实际申请的高德key(也可以根据个人需要更改为更加隐式的办法)
+
+
 
 ## 📖 项目简介
 
 **智扫通机器人智能客服**是一款面向扫地机器人/扫拖一体机器人用户的 AI 智能体应用。系统以 Streamlit 构建轻量级前端网页，后端基于 LangChain 搭建 ReAct（Reasoning + Acting）Agent，整合以下核心能力：
 
 - **RAG 增强检索**：将产品手册、常见问题、维护指南等文档向量化存储，AI 回答时优先检索知识库，确保答案准确可靠。
-- **高德 MCP 服务**：调用高德地图 API 实时获取用户定位与天气信息。
+- **UAPI 服务**：调用 UAPI 实时获取用户定位与天气信息。
 - **总结汇报模式**：中间件通过识别特定意图，动态切换系统提示词，自动生成使用情况报告（Markdown 格式）。
 - **多轮工具调用**：Agent 可自主规划并多轮调用所配备的工具，直至满足用户需求。
 - **流式响应**：最终结果在网页端以逐字流式方式呈现，提升交互体验。
@@ -216,7 +216,6 @@ pip install streamlit langchain langchain-core langchain-community langgraph \
 # 设置阿里云 DashScope API Key
 export DASHSCOPE_API_KEY="your_dashscope_api_key"
 
-# 在 config/agent.yml 中配置高德地图 API Key
 ```
 
 ### 4. 启动应用

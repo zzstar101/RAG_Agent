@@ -226,3 +226,4 @@ config/*
 !config/.gitkeep
 chroma/*
 md5.text
+todo.md
