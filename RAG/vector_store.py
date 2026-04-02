@@ -10,7 +10,7 @@ from utils.logger_handler import logger
 from langchain_core.documents import Document
 
 
-class VectorStoreStorage:
+class VectorStoreService:
     def __init__(self):
         self.vector_store = Chroma(
             collection_name=chroma_config['collection_name'],
