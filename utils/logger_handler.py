@@ -11,8 +11,20 @@ LOG_ROOT = get_abs_path("logs")
 
 os.makedirs(LOG_ROOT, exist_ok=True)
 
-DEFAULT_LOG_FORMAT = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - trace_id=%(trace_id)s - %(filename)s:%(lineno)d - %(message)s"
+class ConditionalLineFormatter(logging.Formatter):
+    def __init__(self, normal_fmt: str, error_fmt: str):
+        super().__init__()
+        self.normal_formatter = logging.Formatter(normal_fmt)
+        self.error_formatter = logging.Formatter(error_fmt)
+
+    def format(self, record: logging.LogRecord) -> str:
+        formatter = self.error_formatter if record.levelno >= logging.ERROR else self.normal_formatter
+        return formatter.format(record)
+
+
+DEFAULT_LOG_FORMAT = ConditionalLineFormatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
 )
 
 _TRACE_ID: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="-")
@@ -46,10 +58,21 @@ def ensure_trace_id() -> str:
         return current
     return set_trace_id(uuid.uuid4().hex)
 
+
+def _resolve_log_level(env_name: str, default_level: int) -> int:
+    raw_value = os.getenv(env_name, "").strip().upper()
+    if not raw_value:
+        return default_level
+
+    if raw_value.isdigit():
+        return int(raw_value)
+
+    return getattr(logging, raw_value, default_level)
+
 def get_logger(
     name: str = "agent", 
     log_file: str = None, 
-    console_level: int = logging.INFO, 
+    console_level: int = logging.WARNING, 
     file_level: int = logging.DEBUG
     ) -> logging.Logger:
     logger = logging.getLogger(name)
@@ -59,7 +82,8 @@ def get_logger(
     if logger.handlers:
         return logger  # Logger already configured
 
-    logger.addFilter(TraceIdFilter())
+    console_level = _resolve_log_level("RAG_AGENT_CONSOLE_LOG_LEVEL", console_level)
+    file_level = _resolve_log_level("RAG_AGENT_FILE_LOG_LEVEL", file_level)
     
     #console handler
     console_handler = logging.StreamHandler()

@@ -28,7 +28,7 @@ def activate_report_context(
     context["report_entered_at"] = timestamp
     if trace_id:
         context["trace_id"] = trace_id
-    logger.info("[报告状态机]进入报告模式，ttl=%ss", max(ttl_seconds, 1))
+    logger.debug("[报告状态机]进入报告模式，ttl=%ss", max(ttl_seconds, 1))
 
 
 def deactivate_report_context(
@@ -42,7 +42,7 @@ def deactivate_report_context(
     context[REPORT_CONTEXT_EXPIRES_AT_KEY] = 0.0
     context["report_last_exit_reason"] = reason
     context["report_exited_at"] = timestamp
-    logger.info("[报告状态机]退出报告模式，reason=%s", reason)
+    logger.debug("[报告状态机]退出报告模式，reason=%s", reason)
 
 
 def is_report_context_active(context: dict, *, now_ts: float | None = None) -> bool:
@@ -197,15 +197,15 @@ def monitor_tool(request: ToolCallRequest, handler: Callable[[ToolCallRequest], 
         request.runtime.context["trace_id"] = ensure_trace_id()
 
     started_at = time.perf_counter()
-    logger.info(f"[工具调用监控]执行工具：{request.tool_call['name']}")
-    logger.info(f"[工具调用监控]传入参数：{request.tool_call['args']}")
+    logger.debug(f"[工具调用监控]执行工具：{request.tool_call['name']}")
+    logger.debug(f"[工具调用监控]传入参数：{request.tool_call['args']}")
     
     try:
         result = handler(request)
         duration_ms = (time.perf_counter() - started_at) * 1000
         _record_tool_metrics(request.runtime.context, success=True, duration_ms=duration_ms)
-        logger.info(f"[工具调用监控]工具{request.tool_call['name']}调用成功")
-        logger.info(f"[工具调用监控]工具耗时：{duration_ms:.2f}ms")
+        logger.debug(f"[工具调用监控]工具{request.tool_call['name']}调用成功")
+        logger.debug(f"[工具调用监控]工具耗时：{duration_ms:.2f}ms")
         
         if request.tool_call['name'] == "fill_context_for_report":
             activate_report_context(request.runtime.context, trace_id=request.runtime.context.get("trace_id"))
@@ -231,12 +231,12 @@ def log_before_model(state: AgentState, runtime: Runtime):
     previous_started_at = runtime.context.get("model_started_at")
     if isinstance(previous_started_at, (int, float)):
         elapsed_ms = (time.perf_counter() - float(previous_started_at)) * 1000
-        logger.info(f"[模型调用监控]上一次模型链路耗时：{elapsed_ms:.2f}ms")
+        logger.debug(f"[模型调用监控]上一次模型链路耗时：{elapsed_ms:.2f}ms")
 
     runtime.context["model_started_at"] = time.perf_counter()
 
     messages = state.get("messages", [])
-    logger.info(f"[模型调用监控]即将调用模型，附带{len(messages)}条消息")
+    logger.debug(f"[模型调用监控]即将调用模型，附带{len(messages)}条消息")
 
     if messages:
         latest = messages[-1]

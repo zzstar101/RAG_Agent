@@ -68,7 +68,7 @@ def call_with_retry(action_name: str, operation: Callable[[], T]) -> T:
 def rag_summarize(query: str) -> str:
     result = rag.rag_summarize(query)
     metrics = getattr(rag, "last_metrics", {})
-    logger.info(
+    logger.debug(
         "[检索指标]hits=%s retrieval_ms=%.2f model_ms=%.2f",
         metrics.get("retrieval_hit_count", 0),
         float(metrics.get("retrieval_duration_ms", 0.0)),
