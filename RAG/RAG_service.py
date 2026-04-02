@@ -4,6 +4,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 from model.factory import chat_model
+import time
 
 
 
@@ -16,6 +17,11 @@ class RAGSummarizeService:
         self.prompt_template = PromptTemplate.from_template(self.prompt_text)
         self.model = chat_model
         self.chain = self.__init__chain()
+        self.last_metrics = {
+            "retrieval_hit_count": 0,
+            "retrieval_duration_ms": 0.0,
+            "model_duration_ms": 0.0,
+        }
         
     def __init__chain(self):
         chain = self.prompt_template | self.model | StrOutputParser()
@@ -40,7 +46,9 @@ class RAGSummarizeService:
         return "\n".join(source_lines)
     
     def rag_summarize(self, query: str) -> str:
+        retrieval_started_at = time.perf_counter()
         retrieved_documents = self.vector_store.retrieve_documents(query)
+        retrieval_duration_ms = (time.perf_counter() - retrieval_started_at) * 1000
         context_docs = [retrieved_document.document for retrieved_document in retrieved_documents]
         context = ""
         counter = 0
@@ -48,11 +56,21 @@ class RAGSummarizeService:
             counter += 1
             context += f"[参考资料{counter}]：参考资料：{doc.page_content} | 参考元数据：{doc.metadata}\n"
             
-        return self.chain.invoke(
+        model_started_at = time.perf_counter()
+        answer = self.chain.invoke(
             {
                 "input": query,
                 "context": context
             }
-        ) + self._format_source_summary(retrieved_documents)
+        )
+        model_duration_ms = (time.perf_counter() - model_started_at) * 1000
+
+        self.last_metrics = {
+            "retrieval_hit_count": len(retrieved_documents),
+            "retrieval_duration_ms": retrieval_duration_ms,
+            "model_duration_ms": model_duration_ms,
+        }
+
+        return answer + self._format_source_summary(retrieved_documents)
             
             

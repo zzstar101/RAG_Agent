@@ -145,8 +145,7 @@ zhisaotong-Agent/
 ### 安装依赖
 
 ```bash
-pip install streamlit langchain langchain-core langchain-community langgraph \
-            langchain-chroma chromadb dashscope pypdf pyyaml uapi-sdk-python
+pip install -r requirements.txt
 ```
 
 
@@ -206,8 +205,7 @@ cd RAG_Agent
 ### 2. 安装依赖
 
 ```bash
-pip install streamlit langchain langchain-core langchain-community langgraph \
-            langchain-chroma chromadb dashscope pypdf pyyaml uapi-sdk-python
+pip install -r requirements.txt
 ```
 
 ### 3. 配置 API Key
@@ -216,6 +214,12 @@ pip install streamlit langchain langchain-core langchain-community langgraph \
 # 设置阿里云 DashScope API Key
 export DASHSCOPE_API_KEY="your_dashscope_api_key"
 
+```
+
+Windows PowerShell:
+
+```powershell
+$env:DASHSCOPE_API_KEY="your_dashscope_api_key"
 ```
 
 ### 4. 启动应用
@@ -291,9 +295,38 @@ log_before_model     模型调用前日志
   └─ 记录当前消息数量及最新消息内容
 
 report_prompt_switch 动态提示词切换
-  ├─ context["report"] == True  → 使用报告生成提示词
-  └─ context["report"] == False → 使用主 ReAct 提示词
+  ├─ 报告状态机处于 active 且未过期 → 使用报告生成提示词
+  └─ 非 active 或 TTL 过期 → 使用主 ReAct 提示词
 ```
+
+报告模式采用状态机管理，默认 TTL 为 180 秒。调用 `fill_context_for_report` 会进入报告模式；超过 TTL 自动退出，避免后续普通对话被报告上下文污染。
+
+---
+
+## 📈 可观测性
+
+- 日志增加 `trace_id` 字段，贯穿模型调用与工具调用链路。
+- 工具调用会记录耗时、成功数、失败数等统计。
+- `rag_summarize` 会记录检索命中数、检索耗时、模型耗时指标。
+- 模型工厂启动时执行自检并输出结果（模型名、凭证、连通性）。
+
+---
+
+## ✅ 测试
+
+运行全部测试：
+
+```bash
+python -m unittest -v tests/test_agent_tools.py
+python -m unittest -v tests/test_config_and_paths.py
+python -m unittest -v tests/test_p2_improvements.py
+```
+
+新增测试覆盖：
+
+- 报告模式状态机进入/TTL 自动退出。
+- 模型工厂启动自检结果结构。
+- `trace_id` 生命周期（生成、读取、清理）。
 
 ---
 

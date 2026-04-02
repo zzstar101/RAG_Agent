@@ -1,6 +1,8 @@
 from datetime import datetime
+import contextvars
 import logging
 import os
+import uuid
 from logging.handlers import RotatingFileHandler
 
 from utils.path_tool import get_abs_path
@@ -10,8 +12,39 @@ LOG_ROOT = get_abs_path("logs")
 os.makedirs(LOG_ROOT, exist_ok=True)
 
 DEFAULT_LOG_FORMAT = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+    "%(asctime)s - %(name)s - %(levelname)s - trace_id=%(trace_id)s - %(filename)s:%(lineno)d - %(message)s"
 )
+
+_TRACE_ID: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="-")
+
+
+class TraceIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.trace_id = get_trace_id()
+        return True
+
+
+def set_trace_id(trace_id: str) -> str:
+    normalized = str(trace_id).strip()
+    if not normalized:
+        normalized = "-"
+    _TRACE_ID.set(normalized)
+    return normalized
+
+
+def get_trace_id() -> str:
+    return _TRACE_ID.get()
+
+
+def clear_trace_id() -> None:
+    _TRACE_ID.set("-")
+
+
+def ensure_trace_id() -> str:
+    current = get_trace_id()
+    if current and current != "-":
+        return current
+    return set_trace_id(uuid.uuid4().hex)
 
 def get_logger(
     name: str = "agent", 
@@ -25,6 +58,8 @@ def get_logger(
     
     if logger.handlers:
         return logger  # Logger already configured
+
+    logger.addFilter(TraceIdFilter())
     
     #console handler
     console_handler = logging.StreamHandler()
